@@ -1,31 +1,38 @@
 import os
-import jwt
-import uuid
+
 import hashlib
 from urllib.parse import urlencode
+
+import upbit
+import time
 import requests
+import json
 
-access_key = "4FqHZKOjjPqDBhjxD56E8FYnvT5Ikg8XgUtlhWsy"
-secret_key = "XbdgoRmO7ddwMTEfYsRJty8wKh62XxEclZaCShRx"
-server_url = "https://api.upbit.com"
+serverURL = "https://api.upbit.com"
 
-# payload = {
-#     'access_key': access_key,
-#     'nonce': str(uuid.uuid4()),
-# }
+account = upbit.Upbit(serverURL)
+print(json.dumps(account.getAccount(), indent=4))
+print(account.getAssetsList())
+
+print(account.getTicker("KRW-BTC"))
+
+
+
+while(True):
+    time.sleep(0.2)
+    # print(account.getTradePrice("KRW-BTC"))
+    # print(account.analyzeMinuteCandle("KRW-BTC", 1, 3))
+    print(account.getAssetValuation("KRW-BTC"))
+
+# url = "https://api.upbit.com/v1/candles/minutes/1"
 #
-# jwt_token = jwt.encode(payload, secret_key)
-# authorize_token = 'Bearer {}'.format(jwt_token)
-# headers = {"Authorization": authorize_token}
+# querystring = {"market":"KRW-BTC","count":"30"}
 #
-# res = requests.get(server_url + "/v1/accounts", headers=headers)
+# response = requests.request("GET", url, params=querystring)
 #
-# print(res.json())
-
-url = "https://api.upbit.com/v1/ticker"
-params = {"markets" : "KRW-BTC"}
-
-response = requests.request("GET", url, params=params)
-
-print(response.status_code)
-print(response.text)
+# jsonObject = response.json()
+#
+# print(json.dumps(jsonObject, indent=4))
+#
+#
+#
