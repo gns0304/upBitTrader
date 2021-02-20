@@ -8,8 +8,8 @@ class Upbit:
         self.serverURL = serverURL # 서버 URL을 지정합니다
         self.headers = {}
 
-        with open("Accesskey", 'r') as f:
-            self.accessKey = json.load(f) # 외부파일에서 accessKey를 불러옵니다
+        with open("Accesskey", 'r') as jsonFile:
+            self.accessKey = json.load(jsonFile) # 외부파일에서 accessKey를 불러옵니다
 
     def setNonce(self):
         """
@@ -62,10 +62,10 @@ class Upbit:
         jsonObject = response.json()
         return jsonObject[0]["trade_price"]
 
-    def getMinuteCandle(self, market, minute, count):
-        params = {"market": market, "count": str(count)}
+    def getMinuteCandle(self, market, minute, count, to=""):
+        params = {"market": market, "count": str(count), "to": str(to)}
         response = requests.request("GET", self.serverURL + "/v1/candles/minutes/" + str(minute), params=params)
-        print(response.text)
+        return response.json()
 
     def analyzeMinuteCandle(self, market, minute, count):
         """
@@ -111,6 +111,7 @@ class Upbit:
         response = requests.get(self.serverURL + "/v1/accounts", headers=self.headers)
         list = []
 
+
         for data in response.json():
 
             if data["currency"] == market.split("-")[1]:
@@ -122,10 +123,77 @@ class Upbit:
                 list.append(math.ceil(float(data["avg_buy_price"]) * float(data["balance"])))
                 list.append(math.floor(presentPrice * float(data["balance"])))
                 list.append(round(difference / float(assetPosition)*100, 2))
-                list.append(math.ceil(valuation))
+                list.append(math.floor(valuation))
 
                 return list
 
             return None
+
+    def getRSI(self, length=14, count=200):
+        preMinuteData = self.getMinuteCandle("KRW-BTC", 1, count)
+
+        dataList = []
+        rsiList = []
+
+        for i in range(length-1):
+            rsiList.append(None)
+
+        riseList = [0, ]
+        fallList = [0, ]
+
+        for i in range(len(preMinuteData)):
+            dataList.append({"time" : preMinuteData[len(preMinuteData) - 1 - i]['candle_date_time_kst'].replace("T", " "),
+                             "tradePrice" : preMinuteData[len(preMinuteData) - 1 - i]['trade_price']})
+
+            if 0 <= i <= length-1:
+                dataList[i]['difference'] = dataList[i]['tradePrice'] - dataList[i-1]['tradePrice']
+
+                if i < length-1 :
+
+                    if dataList[i]['difference'] > 0:
+                        riseList.append(abs(dataList[i]['difference']))
+                        fallList.append(0)
+                    else:
+                        fallList.append(abs(dataList[i]['difference']))
+                        riseList.append(0)
+
+                if i == length - 1:
+
+                    dataList[i]['AU'] = sum(riseList)
+                    dataList[i]['AD'] = sum(fallList)
+                    dataList[i]['rsi'] = (100 * dataList[i]['AU'] / (dataList[i]['AU'] + dataList[i]['AD']))
+
+                elif i == 0:
+                    dataList[i]['difference'] = 0
+
+            elif i >= length:
+
+                dataList[i]['difference'] = dataList[i]['tradePrice'] - dataList[i - 1]['tradePrice']
+
+                if dataList[i]['difference'] > 0:
+
+                    dataList[i]['AU'] = (dataList[i-1]['AU'] * (length - 1) + abs(dataList[i]['difference'])) / length
+                    dataList[i]['AD'] = ((dataList[i-1]['AD'] * (length - 1)) / length)
+
+                else:
+
+                    dataList[i]['AU'] = ((dataList[i-1]['AU'] * (length - 1)) / length)
+                    dataList[i]['AD'] = (dataList[i-1]['AD'] * (length - 1) + abs(dataList[i]['difference'])) / length
+
+                dataList[i]['rsi'] = (100*dataList[i]['AU']/(dataList[i]['AU']+dataList[i]['AD']))
+
+
+
+        #
+        # for i in range(len(dataList)):
+        #     print(i, end = "")
+        #     print(dataList[i])
+
+        import sys
+        print(sys.getsizeof(dataList))
+        return dataList[len(dataList)-1]['rsi']
+
+
+
 
 
